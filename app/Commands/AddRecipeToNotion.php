@@ -6,8 +6,9 @@ use App\IngredientGroup;
 use App\Recipe;
 use DOMDocument;
 use DOMXPath;
-use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Http;
 use LaravelZero\Framework\Commands\Command;
+use R64\PhpNotion\Notion;
 
 class AddRecipeToNotion extends Command
 {
@@ -26,10 +27,13 @@ class AddRecipeToNotion extends Command
         $doc->loadHTML($content);
         libxml_use_internal_errors(false);
 
-        // Build reciep
+        // Build recipe
         $recipe = $this->buildRecipe($doc);
-        dd($recipe);
 
+        // Upload to Notion
+        $url = $this->saveToNotion($recipe);
+
+        $this->output->writeln($url);
     }
 
     private function buildRecipe(DOMDocument $document)
@@ -54,12 +58,14 @@ class AddRecipeToNotion extends Command
     {
         $title = $xpath->query("//h1[contains(@class, 'entry-title')]");
         $title = $title->item(0)->nodeValue;
+
         return str_replace(' | Street Kitchen', '', $title);
     }
 
     private function getHeaderImage(DOMXPath $xpath)
     {
         $img = $xpath->query("//meta[@property='og:image']");
+
         return $img->item(0)->getAttribute('content');
     }
 
@@ -67,6 +73,7 @@ class AddRecipeToNotion extends Command
     {
         $portions = $xpath->query("//div[contains(@class, 'quantity-box')]");
         $portions = $portions->item(0)->nodeValue;
+
         return $this->cleanup($portions);
     }
 
@@ -112,6 +119,18 @@ class AddRecipeToNotion extends Command
     {
         $string = strip_tags($string ?? '');
         $string = str_replace(["\r", "\n"], '', $string);
+
         return preg_replace('/^\s+|\s+$|\s+(?=\s)/', '', $string);
+    }
+
+    private function saveToNotion(Recipe $recipe)
+    {
+        $response = Http::withHeaders([
+                'Authorization' => 'Bearer '.env('NOTION_SECRET'),
+                'Notion-Version' => '2022-06-28',
+            ])
+            ->post('https://api.notion.com/v1/pages', $recipe->toNotionJson());
+
+        return $response->json('url');
     }
 }

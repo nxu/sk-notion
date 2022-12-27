@@ -2,14 +2,21 @@
 
 namespace App;
 
+use Illuminate\Support\Arr;
+
 class Recipe
 {
     private string $title;
+
     private ?string $headerImage;
+
     private array $ingredients = [];
+
     private array $paragraphs;
-    private ?string $icon;
-    private ?string $portionSize;
+
+    private ?string $icon = null;
+
+    private ?string $portionSize = null;
 
     public function getTitle(): string
     {
@@ -51,7 +58,6 @@ class Recipe
         }
     }
 
-
     public function getParagraphs(): array
     {
         return $this->paragraphs;
@@ -82,4 +88,111 @@ class Recipe
         $this->portionSize = $portionSize;
     }
 
+    public function toNotionJson(): array
+    {
+        $data = [
+            'parent' => [
+                'type' => 'page_id',
+                'page_id' => env('NOTION_PARENT_PAGE'),
+            ],
+            'cover' => [
+                'external' => [
+                    'url' => $this->getHeaderImage(),
+                ],
+            ],
+            'properties' => [
+                'title' => [
+                    'title' => [
+                        [
+                            'type' => 'text',
+                            'text' => [
+                                'content' => $this->getTitle(),
+                            ],
+                        ],
+                    ],
+                ]],
+            'children' => [
+                [
+                    'object' => 'block',
+                    'type' => 'heading_2',
+                    'heading_2' => [
+                        'rich_text' => [
+                            [
+                                'type' => 'text',
+                                'text' => [
+                                    'content' => 'Hozzávalók',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                ...Arr::flatten(array_map(fn (IngredientGroup $ingredientGroup) => [
+                    [
+                        'object' => 'block',
+                        'type' => 'heading_3',
+                        'heading_3' => [
+                            'rich_text' => [
+                                [
+                                    'type' => 'text',
+                                    'text' => [
+                                        'content' => $ingredientGroup->getTitle(),
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    ...array_map(fn ($item) => [
+                        'object' => 'block',
+                        'type' => 'bulleted_list_item',
+                        'bulleted_list_item' => [
+                            'rich_text' => [
+                                [
+                                    'type' => 'text',
+                                    'text' => [
+                                        'content' => $item,
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ], $ingredientGroup->getIngredients()),
+                ], $this->getIngredients()), 1),
+                [
+                    'object' => 'block',
+                    'type' => 'heading_2',
+                    'heading_2' => [
+                        'rich_text' => [
+                            [
+                                'type' => 'text',
+                                'text' => [
+                                    'content' => 'Elkészítés',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                ...array_map(fn ($paragraph) => [
+                    'object' => 'block',
+                    'type' => 'paragraph',
+                    'paragraph' => [
+                        'rich_text' => [
+                            [
+                                'type' => 'text',
+                                'text' => [
+                                    'content' => $paragraph,
+                                ],
+                            ],
+                        ],
+                    ],
+                ], $this->getParagraphs()),
+            ],
+        ];
+
+        if ($this->getIcon()) {
+            $data['icon'] = [
+                'emoji' => $this->getIcon(),
+            ];
+        }
+
+        return $data;
+    }
 }

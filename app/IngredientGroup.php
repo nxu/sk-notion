@@ -7,7 +7,8 @@ class IngredientGroup
     public function __construct(
         private string $title,
         private array $ingredients,
-    ) { }
+    ) {
+    }
 
     public function getTitle(): string
     {
