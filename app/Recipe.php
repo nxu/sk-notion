@@ -126,8 +126,8 @@ class Recipe
                         ],
                     ],
                 ],
-                ...Arr::flatten(array_map(fn (IngredientGroup $ingredientGroup) => [
-                    [
+                ...Arr::flatten(array_map(fn (IngredientGroup $ingredientGroup) => array_filter([
+                    $ingredientGroup->getTitle() ? [
                         'object' => 'block',
                         'type' => 'heading_3',
                         'heading_3' => [
@@ -140,7 +140,7 @@ class Recipe
                                 ],
                             ],
                         ],
-                    ],
+                    ] : null,
                     ...array_map(fn ($item) => [
                         'object' => 'block',
                         'type' => 'bulleted_list_item',
@@ -155,7 +155,7 @@ class Recipe
                             ],
                         ],
                     ], $ingredientGroup->getIngredients()),
-                ], $this->getIngredients()), 1),
+                ]), $this->getIngredients()), 1),
                 [
                     'object' => 'block',
                     'type' => 'heading_2',

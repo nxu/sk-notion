@@ -83,7 +83,12 @@ class AddRecipeToNotion extends Command
         $ingredients = [];
 
         foreach ($groups as $group) {
-            $title = $this->cleanup($group->getElementsByTagName('h3')[0]->nodeValue);
+            $h3 = $group->getElementsByTagName('h3');
+
+            if ($h3->count() > 0) {
+                $title = $this->cleanup($h3[0]->nodeValue);
+            }
+
             $dds = $group->getElementsByTagName('dd');
             $items = [];
 
@@ -92,7 +97,7 @@ class AddRecipeToNotion extends Command
             }
 
             $ingredients[] = new IngredientGroup(
-                title: $title,
+                title: $title ?? null,
                 ingredients: $items,
             );
         }
